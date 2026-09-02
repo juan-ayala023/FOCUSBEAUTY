@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { useSite } from '../hooks/useSite'
 import SmartImage from './SmartImage'
 import Reveal from './Reveal'
@@ -13,12 +14,83 @@ import Reveal from './Reveal'
  * Las fotos salen de la galería filtrando por categoría, así que añadir
  * una más al script las trae aquí solas.
  *
- * La tira se desplaza en horizontal con scroll-snap: sin JavaScript, y en
- * el móvil se arrastra con el dedo como es natural.
+ * La tira avanza sola, una foto cada 3,5 s, y se arrastra con el dedo o
+ * el ratón cuando a alguien le apetece adelantarse. El avance es un
+ * scrollTo sobre la misma tira de scroll-snap que ya había, no un
+ * carrusel aparte: así el arrastre manual y el automático son el mismo
+ * gesto y nunca se pelean por la posición.
  */
+
+/** Cada cuánto salta a la siguiente foto. */
+const AVANCE_MS = 3500
+
+/** Tras soltar el dedo, cuánto espera antes de retomar el avance solo. */
+const ESPERA_TRAS_TOCAR_MS = 5000
+
 export default function MaquillajeSocial() {
   const { gallery, whatsappLink } = useSite()
   const fotos = gallery.filter((f) => f.cat === 'maquillaje')
+
+  const tira = useRef(null)
+  const reanudar = useRef(null)
+  const [enPausa, setEnPausa] = useState(false)
+  const [aLaVista, setALaVista] = useState(false)
+
+  // Solo avanza mientras la franja está en pantalla. Si no, al volver a
+  // ella el visitante se la encontraría ya recorrida hasta el final.
+  useEffect(() => {
+    const el = tira.current
+    if (!el) return
+    const observador = new IntersectionObserver(
+      ([entrada]) => setALaVista(entrada.isIntersecting),
+      { threshold: 0.25 },
+    )
+    observador.observe(el)
+    return () => observador.disconnect()
+  }, [])
+
+  useEffect(() => {
+    const el = tira.current
+    if (!el || enPausa || !aLaVista) return
+    // Quien pidió menos animación no quiere que la página se mueva sola.
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+
+    const id = setInterval(() => {
+      const foto = el.firstElementChild
+      if (!foto) return
+      // El paso se mide del DOM, no de las clases: el ancho cambia en cada
+      // punto de ruptura (64% en móvil, 18.4% en pantallas grandes).
+      const separacion = parseFloat(getComputedStyle(el).columnGap) || 0
+      const paso = foto.getBoundingClientRect().width + separacion
+      const tope = el.scrollWidth - el.clientWidth
+      // El margen de 4px absorbe los redondeos a subpíxel del navegador;
+      // sin él, la última foto a veces no se reconoce como el final.
+      const destino = el.scrollLeft >= tope - 4 ? 0 : el.scrollLeft + paso
+      el.scrollTo({ left: destino, behavior: 'smooth' })
+    }, AVANCE_MS)
+
+    return () => clearInterval(id)
+  }, [enPausa, aLaVista])
+
+  // Limpia el temporizador pendiente si la sección se desmonta a medias.
+  useEffect(() => () => clearTimeout(reanudar.current), [])
+
+  const pausar = () => {
+    clearTimeout(reanudar.current)
+    setEnPausa(true)
+  }
+
+  const seguir = () => {
+    clearTimeout(reanudar.current)
+    setEnPausa(false)
+  }
+
+  // En táctil no hay «salir con el cursor»: se retoma tras una espera,
+  // para no arrebatarle la tira a quien la está mirando.
+  const seguirConCalma = () => {
+    clearTimeout(reanudar.current)
+    reanudar.current = setTimeout(() => setEnPausa(false), ESPERA_TRAS_TOCAR_MS)
+  }
 
   if (!fotos.length) return null
 
@@ -50,7 +122,16 @@ export default function MaquillajeSocial() {
           a plomo con el titular. El relleno propio no sirve: con
           snap-mandatory el navegador lo compensa y desplaza la tira solo. */}
       <Reveal delay={150} className="container">
-        <ul className="mt-12 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <ul
+          ref={tira}
+          onMouseEnter={pausar}
+          onMouseLeave={seguir}
+          onFocusCapture={pausar}
+          onBlurCapture={seguir}
+          onTouchStart={pausar}
+          onTouchEnd={seguirConCalma}
+          className="mt-12 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
           {fotos.map((foto, i) => (
             <li
               key={foto.src}
