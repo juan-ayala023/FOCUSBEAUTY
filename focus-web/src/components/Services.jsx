@@ -1,5 +1,6 @@
 import { useSite } from '../hooks/useSite'
 import Reveal from './Reveal'
+import ServicioTipos from './ServicioTipos'
 
 export default function Services() {
   const { services, whatsappLink } = useSite()
@@ -78,16 +79,7 @@ export default function Services() {
                     {service.description}
                   </p>
 
-                  <ul className="mt-7 flex flex-wrap gap-2">
-                    {service.items.map((item) => (
-                      <li
-                        key={item}
-                        className="border border-borde px-3.5 py-1.5 text-[0.7rem] uppercase tracking-wider text-tinta-suave transition-colors duration-300 group-hover:border-plata/40 group-hover:text-tinta"
-                      >
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
+                  <ServicioTipos id={service.id} items={service.items} />
 
                   <a
                     href={whatsappLink(service.title)}

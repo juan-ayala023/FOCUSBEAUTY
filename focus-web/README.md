@@ -59,6 +59,25 @@ El script también calcula un **LQIP** por foto (una miniatura de 16 px en base6
 que se muestra desenfocada mientras baja la imagen real. Por eso nunca se ve un
 hueco negro al hacer scroll.
 
+### Fotos por tipo de maquillaje
+
+En la tarjeta de **Maquillaje**, las etiquetas que tienen fotos propias se vuelven
+un botón: al pulsarlas se despliegan cinco trabajos ahí mismo. Hoy son **Social** y
+**Grados**; las demás siguen siendo texto hasta que haya material suyo.
+
+```
+FOCUS/fotos-originales/maquillaje-social/   originales de social
+focus-web/public/images/maquillaje/         versiones web: .jpg + .webp
+focus-web/src/data/maquillajes.js           ARCHIVO GENERADO — no editarlo a mano
+```
+
+1. Guarda las fotos en `FOCUS/fotos-originales/` (una subcarpeta por tipo si son varias).
+2. Añade sus líneas a `MAPA` en
+   [`scripts/procesar-maquillajes.py`](scripts/procesar-maquillajes.py). La clave del
+   tipo es la etiqueta de `site.js` en minúsculas y sin tildes (`Quinceañeras` →
+   `quinceaneras`), así la etiqueta y sus fotos se encuentran solas.
+3. Ejecuta `python scripts/procesar-maquillajes.py`.
+
 Faltan fotos reales de **maquillaje** y de **pestañas y cejas**: esas dos tarjetas
 de servicio siguen usando las del prototipo, marcadas con `TODO` en `site.js`.
 
@@ -165,6 +184,7 @@ saberlo antes de tocar nada.
 
 ```
 scripts/procesar-fotos.py   prepara las fotos y regenera src/data/gallery.js
+scripts/procesar-maquillajes.py  fotos por tipo de maquillaje -> src/data/maquillajes.js
 src/
   main.jsx                  decide entre el sitio y el panel según la ruta
   App.jsx                   orden de las secciones
