@@ -1,9 +1,16 @@
 import { useCallback, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 
 /**
  * Visor a pantalla completa para la galería.
  * Flechas y Escape en teclado, deslizar en móvil, y la miniatura
  * borrosa de fondo mientras carga la foto grande.
+ *
+ * Va por portal al <body> a propósito. Un `position: fixed` se mide contra
+ * el ancestro transformado más cercano, y casi todo el sitio vive dentro de
+ * un <Reveal>, que lleva un translate permanente: desde ahí el visor se
+ * abría del tamaño de la tarjeta y con la foto cortada. Colgándolo del body
+ * no hay ancestro que lo encierre, se abra desde donde se abra.
  */
 export default function Lightbox({ photos, index, onClose, onNavigate }) {
   const photo = photos[index]
@@ -43,7 +50,7 @@ export default function Lightbox({ photos, index, onClose, onNavigate }) {
 
   if (!photo) return null
 
-  return (
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -115,6 +122,7 @@ export default function Lightbox({ photos, index, onClose, onNavigate }) {
           <span aria-hidden="true">›</span>
         </button>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
