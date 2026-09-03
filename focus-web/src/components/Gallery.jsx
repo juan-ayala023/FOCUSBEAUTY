@@ -1,10 +1,15 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useSite } from '../hooks/useSite'
 import Reveal from './Reveal'
 import SmartImage from './SmartImage'
 import Lightbox from './Lightbox'
 
-// Fotos por tanda en la retícula
+// Lo que se ve de entrada: dos filas en escritorio, tres en móvil. Es una
+// muestra, no el archivo entero; quien quiera más lo pide.
+const INICIALES = 6
+
+// Cuántas añade cada «ver más». Más que las iniciales a propósito: quien
+// pulsa una vez ya dijo que quiere ver, y no va a repetirlo seis veces.
 const POR_TANDA = 12
 
 /**
@@ -39,7 +44,8 @@ export default function Gallery() {
   const { brand, galleryFilters, gallery } = useSite()
   const [filtro, setFiltro] = useState('todo')
   const [abierta, setAbierta] = useState(null)
-  const [tope, setTope] = useState(POR_TANDA)
+  const [tope, setTope] = useState(INICIALES)
+  const reticula = useRef(null)
 
   const fotos = useMemo(
     () =>
@@ -53,11 +59,20 @@ export default function Gallery() {
   // y subiendo, volcarlas todas de golpe satura la vista y el navegador.
   const visibles = fotos.slice(0, tope)
   const faltan = fotos.length - visibles.length
+  const desplegada = tope > INICIALES
 
   // Cambiar de filtro vuelve a empezar por la primera tanda
   const cambiarFiltro = (id) => {
     setFiltro(id)
-    setTope(POR_TANDA)
+    setTope(INICIALES)
+  }
+
+  // Al plegar, el botón queda donde terminaba la retícula larga y la vista
+  // se va muy abajo; la devolvemos al principio de las fotos.
+  const plegar = () => {
+    setAbierta(null)
+    setTope(INICIALES)
+    reticula.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   return (
@@ -130,7 +145,11 @@ export default function Gallery() {
         </Reveal>
 
         {/* Retícula tipo mosaico */}
-        <div key={filtro} className="columns-2 gap-3 md:gap-5 lg:columns-3">
+        <div
+          key={filtro}
+          ref={reticula}
+          className="columns-2 scroll-mt-28 gap-3 md:gap-5 lg:columns-3"
+        >
           {visibles.map((foto, i) => (
             <button
               key={foto.src}
@@ -168,12 +187,29 @@ export default function Gallery() {
           ))}
         </div>
 
-        {faltan > 0 && (
-          <div className="mt-10 text-center">
-            <button type="button" onClick={() => setTope((t) => t + POR_TANDA)} className="btn-linea px-9 py-3.5">
-              Ver {Math.min(faltan, POR_TANDA)} fotos más
-              <span className="ml-1 text-tinta-tenue">({visibles.length} de {fotos.length})</span>
-            </button>
+        {(faltan > 0 || desplegada) && (
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
+            {faltan > 0 && (
+              <button
+                type="button"
+                onClick={() => setTope((t) => t + POR_TANDA)}
+                className="btn-linea px-9 py-3.5"
+              >
+                Ver {Math.min(faltan, POR_TANDA)} fotos más
+                <span className="ml-1 text-tinta-tenue">
+                  ({visibles.length} de {fotos.length})
+                </span>
+              </button>
+            )}
+            {desplegada && (
+              <button
+                type="button"
+                onClick={plegar}
+                className="text-xs uppercase tracking-widest text-tinta-tenue underline-offset-4 transition-colors duration-300 hover:text-tinta-fuerte hover:underline"
+              >
+                Ver menos
+              </button>
+            )}
           </div>
         )}
       </div>
